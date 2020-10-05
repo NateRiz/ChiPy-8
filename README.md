@@ -13,7 +13,7 @@ CHIP-8 is an interpreted programming language, developed by Joseph Weisbecker. I
 ## Usage
 ```Python
 python3 main.py {ROM_file_name.ch8}
-# python3 main.py pong (alt).ch8
+# python3 "main.py pong (alt).ch8"
 ```
 
 #### Requirements
