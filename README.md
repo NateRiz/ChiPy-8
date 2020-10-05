@@ -27,7 +27,7 @@ pip3 install pygame
 ## Testing
 The unit tests for ChiPy-8 uses the `unittest` module
 ```
-pip3 tests.py
+python3 tests.py
 ```
 
 ## Acknowledgements
