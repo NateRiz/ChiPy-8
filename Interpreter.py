@@ -1,4 +1,3 @@
-import binascii
 from random import getrandbits
 import pygame
 
@@ -122,8 +121,8 @@ class Interpreter:
     def load_rom(self, rom_path):
         with open(rom_path, "rb") as f:
             content = f.read()
-        ops = binascii.hexlify(content)
-        self.memory[Interpreter.MEMORY_START_ADDRESS:Interpreter.MEMORY_START_ADDRESS + len(ops)] = ops
+            ops = [int('{:02X}'.format(b), 16) for b in content]
+            self.memory[Interpreter.MEMORY_START_ADDRESS:Interpreter.MEMORY_START_ADDRESS + len(ops)] = ops
 
     def load_fonts(self):
         font_set = [
@@ -150,11 +149,12 @@ class Interpreter:
         self.get_input()
 
         self.op_code = (self.memory[self.program_counter] << 8) | self.memory[self.program_counter + 1]
-        self.op_map[self.op_code]()
 
         self.increment_program_counter()
 
-        self._screen.flip()
+        self.op_map[(self.op_code & 0xF000) >> 12]()
+
+        pygame.display.flip()
 
     def get_input(self):
         self.input = [0] * 16
