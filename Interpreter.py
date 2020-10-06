@@ -1,5 +1,6 @@
 from random import getrandbits
 import pygame
+from sys import exit
 
 pygame.init()
 
@@ -90,6 +91,7 @@ class Interpreter:
             0x6: self.OP_6xkk,
             0x7: self.OP_7xkk,
             0x8: self.__op_map8,
+            0x9: self.OP_9xy0,
             0xA: self.OP_Annn,
             0xB: self.OP_Bnnn,
             0xC: self.OP_Cxkk,
@@ -158,6 +160,9 @@ class Interpreter:
 
     def get_input(self):
         self.input = [0] * 16
+        if pygame.event.get(eventtype=pygame.QUIT):
+            pygame.quit()
+            exit(0)
         for i in pygame.event.get(eventtype=pygame.KEYDOWN):
             if chr(i.key) in self.input_map:
                 self.input[self.input_map[chr(i.key)]] = 1
@@ -283,7 +288,7 @@ class Interpreter:
         self.index_register = self.op_code & 0x0FFF
 
     def OP_Bnnn(self):  # P V0, addr: Jump to location nnn + V0
-        self.program_counter = self.op_code | 0x0FFF + self.registers[0]
+        self.program_counter = (self.op_code & 0x0FFF) + self.registers[0]
 
     def OP_Cxkk(self):  # RND Vx, byte: Set Vx = random byte AND kk
         vx = (self.op_code & 0x0F00) >> 8
@@ -334,28 +339,29 @@ class Interpreter:
 
     def OP_Fx15(self):  # LD DT, Vx: Set delay timer = Vx
         vx = (self.op_code & 0x0F00) >> 8
-        self.delay_timer = vx
+        self.delay_timer = self.registers[vx]
 
     def OP_Fx18(self):  # LD ST, Vx: Set sound timer = Vx
         vx = (self.op_code & 0x0F00) >> 8
-        self.sound_timer = vx
+        self.sound_timer = self.registers[vx]
 
     def OP_Fx1E(self):  # ADD I, V: Set I = I + Vx
         vx = (self.op_code & 0x0F00) >> 8
-        self.index_register += vx
+        self.index_register += self.registers[vx]
 
     def OP_Fx29(self):  # LD F, Vx: Set I = location of sprite for digit Vx
         BYTES_PER_SPRITE = 5
         vx = (self.op_code & 0x0F00) >> 8
-        self.index_register = self.memory[Interpreter.FONT_SET_START_ADDRESS + BYTES_PER_SPRITE * vx]
+        self.index_register = self.memory[Interpreter.FONT_SET_START_ADDRESS + BYTES_PER_SPRITE * self.registers[vx]]
 
     def OP_Fx33(self):  # LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
         vx = (self.op_code & 0x0F00) >> 8
-        self.memory[self.index_register] = vx % 10
-        vx //= 10
-        self.memory[self.index_register+1] = vx % 10
-        vx //= 10
-        self.memory[self.index_register+2] = vx % 10
+        val = self.registers[vx]
+        self.memory[self.index_register+2] = val % 10
+        val //= 10
+        self.memory[self.index_register+1] = val % 10
+        val //= 10
+        self.memory[self.index_register] = val % 10
 
     def OP_Fx55(self):  # LD [I], Vx: Store registers V0 through Vx in memory starting at location I
         vx = (self.op_code & 0x0F00) >> 8

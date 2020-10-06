@@ -9,8 +9,8 @@ from tests_utils import *
 class Test(unittest.TestCase):
 
     def setUp(self):
-        patch('pygame.display.set_mode', lambda _ : None).start()
-        patch('pygame.display.flip', lambda : None).start()
+        patch('pygame.display.set_mode', lambda _: None).start()
+        patch('pygame.display.flip', lambda: None).start()
 
     def test_loads_rom_correctly(self):
         path = os.path.join(os.getcwd(), "test_roms", "rand_512_bytes.ch8")
@@ -22,8 +22,8 @@ class Test(unittest.TestCase):
             hex_dump = [int('{:02X}'.format(b), 16) for b in contents]
 
         interpreter = Interpreter(path)
-        for idx, i in enumerate(interpreter.memory[Interpreter.MEMORY_START_ADDRESS: Interpreter.MEMORY_START_ADDRESS+num_bytes]):
-
+        for idx, i in enumerate(
+                interpreter.memory[Interpreter.MEMORY_START_ADDRESS: Interpreter.MEMORY_START_ADDRESS + num_bytes]):
             self.assertEqual(hex_dump[idx], i, F"Wrong value at idx:{idx}. Got {i}, expected {hex_dump[idx]}")
 
     def test_OP_00E0(self):  # CLS: Clear the Display
@@ -31,7 +31,6 @@ class Test(unittest.TestCase):
         interpreter = Interpreter(path)
         interpreter.display = [1] * len(interpreter.display)
         interpreter.tick()
-
         self.assertTrue(not any(interpreter.display), F"Expected cleared display. Got {interpreter.display}")
 
     def test_OP_00EE(self):  # RET: Return from a subroutine
@@ -40,7 +39,6 @@ class Test(unittest.TestCase):
         interpreter.stack = [0x300] + [0x200] * 15
         interpreter.stack_pointer = 1
         interpreter.tick()
-
         correct = [0x300, 0x202] + [0x200] * 14
         self.assertEqual(interpreter.stack, correct)
         self.assertEqual(interpreter.stack_pointer, 0)
@@ -49,14 +47,12 @@ class Test(unittest.TestCase):
         path = os.path.join(os.getcwd(), "test_roms", "jump.ch8")
         interpreter = Interpreter(path)
         interpreter.tick()
-
         self.assertEqual(interpreter.program_counter, 0x212)
 
     def test_OP_2nnn(self):  # CALL addr: Call subroutine at nnn
         path = os.path.join(os.getcwd(), "test_roms", "call_subroutine.ch8")
         interpreter = Interpreter(path)
         interpreter.tick()
-
         correct = [0x202, 0x204] + [0x200] * 14
         self.assertEqual(interpreter.stack, correct)
         self.assertEqual(interpreter.stack_pointer, 1)
@@ -66,7 +62,6 @@ class Test(unittest.TestCase):
         interpreter = Interpreter(path)
         interpreter.registers[0] = 10
         interpreter.tick()
-
         self.assertEqual(interpreter.program_counter, 0x204)
 
     def test_OP_4xkk(self):  # SNE Vx, byte: Skip next instruction if Vx != kk
@@ -74,39 +69,58 @@ class Test(unittest.TestCase):
         interpreter = Interpreter(path)
         interpreter.registers[0] = 11
         interpreter.tick()
-
         self.assertEqual(interpreter.program_counter, 0x204)
 
     def test_OP_5xy0(self):  # SE Vx, Vy: Skip next instruction if Vx = Vy
         path = os.path.join(os.getcwd(), "test_roms", "SE_Vx_Vy.ch8")
         interpreter = Interpreter(path)
         interpreter.tick()
-
         self.assertEqual(interpreter.program_counter, 0x204)
 
-    @skip('Not implemented')
     def test_OP_6xkk(self):  # LD Vx, byte: Set Vx = kk
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_Vx_byte.ch8")
+        interpreter = Interpreter(path)
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0xAA)
 
-    @skip('Not implemented')
     def test_OP_7xkk(self):  # ADD Vx, byte: Set Vx = Vx + kk
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "Add_Vx_byte.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0x1
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0x1 + 0xAA)
 
-    @skip('Not implemented')
     def test_OP_8xy0(self):  # LD Vx, Vy: Set Vx = Vy
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "Ld_Vx_Vy.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0x1
+        interpreter.registers[2] = 0xA
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0xA)
 
-    @skip('Not implemented')
     def test_OP_8xy1(self):  # OR Vx, Vy: Set Vx = Vx OR Vy
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "OR.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0b10101
+        interpreter.registers[2] = 0b11000
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0b11101)
 
-    @skip('Not implemented')
     def test_OP_8xy2(self):  # AND Vx, Vy: Set Vx = Vx AND Vy
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "AND.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0b10101
+        interpreter.registers[2] = 0b01100
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0b00100)
 
-    @skip('Not implemented')
     def test_OP_8xy3(self):  # XOR Vx, Vy: Set Vx = Vx XOR Vy
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "XOR.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0b10101
+        interpreter.registers[2] = 0b01100
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0b11001)
 
     @skip('Not implemented')
     def test_OP_8xy4(self):  # ADD Vx, Vy: Set Vx = Vx + Vy, set VF = carry
@@ -128,24 +142,33 @@ class Test(unittest.TestCase):
     def test_OP_8xyE(self):  # SHL Vx {, Vy}: Set Vx = Vx SHL 1
         pass
 
-    @skip('Not implemented')
     def test_OP_9xy0(self):  # SNE Vx, Vy: Skip next instruction if Vx != Vy
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SNE_Vx_Vy.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 1
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0x204)
 
-    @skip('Not implemented')
     def test_OP_Annn(self):  # LD I, addr: Set I = nnn
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_I_addr.ch8")
+        interpreter = Interpreter(path)
+        interpreter.tick()
+        self.assertEqual(interpreter.index_register, 0xABC)
 
-    @skip('Not implemented')
     def test_OP_Bnnn(self):  # P V0, addr: Jump to location nnn + V0
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "P_V0_addr.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[0] = 0x4
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0xABC + 0x4)
 
     @skip('Not implemented')
     def test_OP_Cxkk(self):  # RND Vx, byte: Set Vx = random byte AND kk
         pass
 
     @skip('Not implemented')
-    def test_OP_Dxyn(self):  # DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
+    def test_OP_Dxyn(
+            self):  # DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
         pass
 
     @skip('Not implemented')
@@ -156,37 +179,59 @@ class Test(unittest.TestCase):
     def test_OP_ExA1(self):  # SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
         pass
 
-    @skip('Not implemented')
     def test_OP_Fx07(self):  # LD Vx, DT: Set Vx = delay timer value
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "Ld_Vx_DT.ch8")
+        interpreter = Interpreter(path)
+        interpreter.delay_timer = 99
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 99)
 
     @skip('Not implemented')
     def test_OP_Fx0A(self):  # LD Vx, K: Wait for a key press, store the value of the key in Vx
         pass
 
-    @skip('Not implemented')
     def test_OP_Fx15(self):  # LD DT, Vx: Set delay timer = Vx
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_DT.ch8")
+        interpreter = Interpreter(path)
+        interpreter.tick()
+        self.assertEqual(interpreter.delay_timer, interpreter.registers[1])
 
-    @skip('Not implemented')
     def test_OP_Fx18(self):  # LD ST, Vx: Set sound timer = Vx
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_ST.ch8")
+        interpreter = Interpreter(path)
+        interpreter.tick()
+        self.assertEqual(interpreter.sound_timer, interpreter.registers[1])
 
-    @skip('Not implemented')
-    def test_OP_Fx1E(self):  # ADD I, V: Set I = I + Vx
-        pass
+    def test_OP_Fx1E(self):  # ADD I, Vx: Set I = I + Vx
+        path = os.path.join(os.getcwd(), "test_roms", "ADD_I_Vx.ch8")
+        interpreter = Interpreter(path)
+        interpreter.index_register = 2
+        interpreter.registers[1] = 3
+        interpreter.tick()
+        self.assertEqual(interpreter.index_register, 5)
 
     @skip('Not implemented')
     def test_OP_Fx29(self):  # LD F, Vx: Set I = location of sprite for digit Vx
         pass
 
-    @skip('Not implemented')
     def test_OP_Fx33(self):  # LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_B_Vx.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[0xA] = 123
+        interpreter.index_register = 0x300
+        interpreter.tick()
+        self.assertEqual(interpreter.memory[0x300:0x303], [1, 2, 3])
 
-    @skip('Not implemented')
+
     def test_OP_Fx55(self):  # LD [I], Vx: Store registers V0 through Vx in memory starting at location I
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_I_Vx.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[:0xC] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        interpreter.index_register = interpreter.MEMORY_START_ADDRESS + 0x100
+        interpreter.tick()
+        start = interpreter.MEMORY_START_ADDRESS+0x100
+        end = start + 0xC
+        self.assertEqual(interpreter.registers[:0xC], interpreter.memory[start:end])
 
     def test_OP_Fx65(self):  # LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
         path = os.path.join(os.getcwd(), "test_roms", "LD_Vx_I.ch8")
