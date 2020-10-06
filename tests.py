@@ -177,9 +177,13 @@ class Test(unittest.TestCase):
     def test_OP_Fx55(self):  # LD [I], Vx: Store registers V0 through Vx in memory starting at location I
         pass
 
-    @skip('Not implemented')
     def test_OP_Fx65(self):  # LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_Vx_I.ch8")
+        interpreter = Interpreter(path)
+        interpreter.index_register = interpreter.MEMORY_START_ADDRESS
+        interpreter.tick()
+        correct = [0xFC, 0x65, 0x01, 0x23, 0x45, 0x67, 0x89, 0x10, 0x11, 0x12, 0x13, 0x14, 0x0, 0x0, 0x0, 0x0]
+        self.assertEqual(interpreter.registers, correct)
 
 
 if __name__ == '__main__':
