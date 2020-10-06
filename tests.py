@@ -61,17 +61,28 @@ class Test(unittest.TestCase):
         self.assertEqual(interpreter.stack, correct)
         self.assertEqual(interpreter.stack_pointer, 1)
 
-    @skip('Not implemented')
     def test_OP_3xkk(self):  # SE Vx, byte: Skip next instruction if Vx = kk
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SE.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[0] = 10
+        interpreter.tick()
 
-    @skip('Not implemented')
+        self.assertEqual(interpreter.program_counter, 0x204)
+
     def test_OP_4xkk(self):  # SNE Vx, byte: Skip next instruction if Vx != kk
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SNE.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[0] = 11
+        interpreter.tick()
 
-    @skip('Not implemented')
+        self.assertEqual(interpreter.program_counter, 0x204)
+
     def test_OP_5xy0(self):  # SE Vx, Vy: Skip next instruction if Vx = Vy
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SE_Vx_Vy.ch8")
+        interpreter = Interpreter(path)
+        interpreter.tick()
+
+        self.assertEqual(interpreter.program_counter, 0x204)
 
     @skip('Not implemented')
     def test_OP_6xkk(self):  # LD Vx, byte: Set Vx = kk
