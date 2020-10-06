@@ -180,68 +180,103 @@ class Interpreter:
         self.program_counter = self.op_code & 0x0FFF
 
     def OP_3xkk(self):  # SE Vx, byte: Skip next instruction if Vx = kk
-        if self.registers[self.op_code & 0x0F00] == self.op_code & 0x00FF:
+        vx = (self.op_code & 0x0F00) >> 8
+
+        if self.registers[vx] == self.op_code & 0x00FF:
             self.increment_program_counter()
 
     def OP_4xkk(self):  # SNE Vx, byte: Skip next instruction if Vx != kk
-        if self.registers[self.op_code & 0x0F00] != self.op_code & 0x00FF:
+        vx = (self.op_code & 0x0F00) >> 8
+
+        if self.registers[vx] != self.op_code & 0x00FF:
             self.increment_program_counter()
 
     def OP_5xy0(self):  # SE Vx, Vy: Skip next instruction if Vx = Vy
-        if self.registers[self.op_code & 0x0F00] == self.registers[self.op_code & 0x00F0]:
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        if self.registers[vx] == self.registers[vy]:
             self.increment_program_counter()
 
     def OP_6xkk(self):  # LD Vx, byte: Set Vx = kk
-        self.registers[self.op_code & 0x0F00] = self.op_code & 0x00FF
+        vx = (self.op_code & 0x0F00) >> 8
+
+        self.registers[vx] = self.op_code & 0x00FF
 
     def OP_7xkk(self):  # ADD Vx, byte: Set Vx = Vx + kk
-        self.registers[self.op_code & 0x0F00] += self.op_code & 0x00FF
+        vx = (self.op_code & 0x0F00) >> 8
+
+        self.registers[vx] += self.op_code & 0x00FF
 
     def OP_8xy0(self):  # LD Vx, Vy: Set Vx = Vy
-        self.registers[self.op_code & 0x0F00] = self.registers[self.op_code & 0x00F0]
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        self.registers[vx] = self.registers[vy]
 
     def OP_8xy1(self):  # OR Vx, Vy: Set Vx = Vx OR Vy
-        self.registers[self.op_code & 0x0F00] = self.registers[self.op_code & 0x0F00] | self.registers[
-            self.op_code & 0x00F0]
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        self.registers[vx] = self.registers[vx] | self.registers[vy]
 
     def OP_8xy2(self):  # AND Vx, Vy: Set Vx = Vx AND Vy
-        self.registers[self.op_code & 0x0F00] = self.registers[self.op_code & 0x0F00] & self.registers[
-            self.op_code & 0x00F0]
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        self.registers[vx] = self.registers[vx] & self.registers[vy]
 
     def OP_8xy3(self):  # XOR Vx, Vy: Set Vx = Vx XOR Vy
-        self.registers[self.op_code & 0x0F00] = self.registers[self.op_code & 0x0F00] ^ self.registers[
-            self.op_code & 0x00F0]
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        self.registers[vx] = self.registers[vx] ^ self.registers[vy]
 
     def OP_8xy4(self):  # ADD Vx, Vy: Set Vx = Vx + Vy, set VF = carry
-        res = self.registers[self.op_code & 0x0F00] + self.registers[self.op_code & 0x00F0]
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        res = self.registers[vx] + self.registers[vy]
         self.registers[0xF] = (0x100 & res) >> 8
-        self.registers[self.op_code & 0x0F00] = res & 0xFF
+        self.registers[vx] = res & 0xFF
 
     def OP_8xy5(self):  # SUB Vx, Vy: Set Vx = Vx - Vy, set VF = NOT borrow
-        self.registers[0xF] = int(self.registers[self.op_code & 0x0F00] > self.registers[self.op_code & 0x00F0])
-        self.registers[self.op_code & 0x0F00] -= self.registers[self.op_code & 0x00F0]
-        if self.registers[self.op_code & 0xF00] < 0:
-            self.registers[self.op_code & 0xF00] += 0xFF
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        self.registers[0xF] = int(self.registers[vx] > self.registers[vy])
+        self.registers[vx] -= self.registers[vy]
+        if self.registers[vx] < 0:
+            self.registers[vx] += 0xFF
 
     def OP_8xy6(self):  # SHR Vx {, Vy}: Set Vx = Vx SHR 1
-        self.registers[0xF] = self.registers[(self.op_code & 0x0F00) & 1]
-        self.registers[self.op_code & 0x0F00] >>= 1
+        vx = (self.op_code & 0x0F00) >> 8
+
+        self.registers[0xF] = self.registers[vx & 1]
+        self.registers[vx] >>= 1
 
     def OP_8xy7(self):  # SUBN Vx, Vy: Set Vx = Vy - Vx, set VF = NOT borrow
-        self.registers[0xF] = int(self.registers[self.op_code & 0x00F0] > self.registers[self.op_code & 0x0F00])
-        self.registers[self.op_code & 0x0F00] = self.registers[self.op_code & 0x00F0] - self.registers[
-            self.op_code & 0x0F00]
-        if self.registers[self.op_code & 0xF00] < 0:
-            self.registers[self.op_code & 0xF00] += 0xFF
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        self.registers[0xF] = int(self.registers[vy] > self.registers[vx])
+        self.registers[vx] = self.registers[vy] - self.registers[vx]
+        if self.registers[vx] < 0:
+            self.registers[vx] += 0xFF
 
     def OP_8xyE(self):  # SHL Vx {, Vy}: Set Vx = Vx SHL 1
-        self.registers[0xF] = self.registers[(self.op_code & 0x0F00) & 0x80]
-        self.registers[(self.op_code & 0x0F00)] <<= 1
+        vx = (self.op_code & 0x0F00) >> 8
+
+        self.registers[0xF] = self.registers[vx & 0x80]
+        self.registers[vx] <<= 1
         if self.registers[0xF]:
-            self.registers[(self.op_code & 0x0F00)] -= 0xFF
+            self.registers[vx] -= 0xFF
 
     def OP_9xy0(self):  # SNE Vx, Vy: Skip next instruction if Vx != Vy
-        if self.registers[self.op_code & 0x0F00] != self.registers[self.op_code & 0x00F0]:
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
+
+        if self.registers[vx] != self.registers[vy]:
             self.increment_program_counter()
 
     def OP_Annn(self):  # LD I, addr: Set I = nnn
@@ -251,12 +286,16 @@ class Interpreter:
         self.program_counter = self.op_code | 0x0FFF + self.registers[0]
 
     def OP_Cxkk(self):  # RND Vx, byte: Set Vx = random byte AND kk
-        self.registers[self.op_code & 0x0F00] = getrandbits(8) & (self.op_code & 0x00FF)
+        vx = (self.op_code & 0x0F00) >> 8
+        self.registers[vx] = getrandbits(8) & (self.op_code & 0x00FF)
 
     def OP_Dxyn(self):  # DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
+        vx = (self.op_code & 0x0F00) >> 8
+        vy = (self.op_code & 0x00F0) >> 4
         sprite = self.memory[self.index_register:self.registers[self.op_code & 0x000F]]
-        x = self.memory[self.op_code & 0x0F00]
-        y = self.memory[self.op_code & 0x00F0]
+
+        x = self.memory[vx]
+        y = self.memory[vy]
 
         idx = x + x * y
         for i in range(len(sprite)):
@@ -273,47 +312,57 @@ class Interpreter:
                               tile_width, tile_height))
 
     def OP_Ex9E(self):  # SKP Vx: Skip next instruction if key with the value of Vx is pressed
-        if self.input[self.registers[self.op_code & 0x0F00]]:
+        vx = (self.op_code & 0x0F00) >> 8
+        if self.input[self.registers[vx]]:
             self.increment_program_counter()
 
     def OP_ExA1(self):  # SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
-        if not self.input[self.registers[self.op_code & 0x0F00]]:
+        vx = (self.op_code & 0x0F00) >> 8
+        if not self.input[self.registers[vx]]:
             self.increment_program_counter()
 
     def OP_Fx07(self):  # LD Vx, DT: Set Vx = delay timer value
-        self.registers[self.op_code & 0x0F00] = self.delay_timer
+        vx = (self.op_code & 0x0F00) >> 8
+        self.registers[vx] = self.delay_timer
 
     def OP_Fx0A(self):  # LD Vx, K: Wait for a key press, store the value of the key in Vx
+        vx = (self.op_code & 0x0F00) >> 8
         for idx, n in self.input:
             if n:
-                self.registers[self.op_code & 0x0F00] = idx
+                self.registers[vx] = idx
                 return
 
     def OP_Fx15(self):  # LD DT, Vx: Set delay timer = Vx
-        self.delay_timer = self.op_code & 0x0F00
+        vx = (self.op_code & 0x0F00) >> 8
+        self.delay_timer = vx
 
     def OP_Fx18(self):  # LD ST, Vx: Set sound timer = Vx
-        self.sound_timer = self.op_code & 0x0F00
+        vx = (self.op_code & 0x0F00) >> 8
+        self.sound_timer = vx
 
     def OP_Fx1E(self):  # ADD I, V: Set I = I + Vx
-        self.index_register += self.op_code & 0x0F00
+        vx = (self.op_code & 0x0F00) >> 8
+        self.index_register += vx
 
     def OP_Fx29(self):  # LD F, Vx: Set I = location of sprite for digit Vx
         BYTES_PER_SPRITE = 5
-        self.index_register = self.memory[Interpreter.FONT_SET_START_ADDRESS + BYTES_PER_SPRITE * (self.op_code & 0x0F00)]
+        vx = (self.op_code & 0x0F00) >> 8
+        self.index_register = self.memory[Interpreter.FONT_SET_START_ADDRESS + BYTES_PER_SPRITE * vx]
 
     def OP_Fx33(self):  # LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
-        val = self.op_code & 0xF00
-        self.memory[self.index_register] = val % 10
-        val //= 10
-        self.memory[self.index_register+1] = val % 10
-        val //= 10
-        self.memory[self.index_register+2] = val % 10
+        vx = (self.op_code & 0x0F00) >> 8
+        self.memory[self.index_register] = vx % 10
+        vx //= 10
+        self.memory[self.index_register+1] = vx % 10
+        vx //= 10
+        self.memory[self.index_register+2] = vx % 10
 
     def OP_Fx55(self):  # LD [I], Vx: Store registers V0 through Vx in memory starting at location I
-        for i in range(self.op_code & 0x0F00):
+        vx = (self.op_code & 0x0F00) >> 8
+        for i in range(vx):
             self.memory[self.index_register + i] = self.registers[i]
 
     def OP_Fx65(self):  # LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
-        for i in range(self.op_code & 0x0F00):
+        vx = (self.op_code & 0x0F00) >> 8
+        for i in range(vx):
             self.registers[i] = self.memory[self.index_register + i]
