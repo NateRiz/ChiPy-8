@@ -332,7 +332,7 @@ class Interpreter:
 
     def OP_Fx0A(self):  # LD Vx, K: Wait for a key press, store the value of the key in Vx
         vx = (self.op_code & 0x0F00) >> 8
-        for idx, n in self.input:
+        for idx, n in enumerate(self.input):
             if n:
                 self.registers[vx] = idx
                 return
