@@ -43,6 +43,24 @@ class Interpreter:
             "c": 0xB,
             "v": 0xF,
         }
+        self.ascii_pygame_key_map = {
+            "1": pygame.K_1,
+            "2": pygame.K_2,
+            "3": pygame.K_3,
+            "4": pygame.K_4,
+            "q": pygame.K_q,
+            "w": pygame.K_w,
+            "e": pygame.K_e,
+            "r": pygame.K_r,
+            "a": pygame.K_a,
+            "s": pygame.K_s,
+            "d": pygame.K_d,
+            "f": pygame.K_f,
+            "z": pygame.K_z,
+            "x": pygame.K_x,
+            "c": pygame.K_c,
+            "v": pygame.K_v,
+        }
         self.display = [0] * (Interpreter.CHIP8_WIDTH * Interpreter.CHIP8_HEIGHT)
         self._screen = pygame.display.set_mode((Interpreter.SCREEN_WIDTH, Interpreter.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
@@ -153,7 +171,7 @@ class Interpreter:
         self.clock.tick(30)
 
         self.get_input()
-
+        print(self.input)
         self.op_code = (self.memory[self.program_counter] << 8) | self.memory[self.program_counter + 1]
         self.increment_program_counter()
 
@@ -164,16 +182,33 @@ class Interpreter:
         if self.sound_timer > 0:
             self.sound_timer = 0
 
+        #[print(self.display[i*64:(i+1)*64]) for i in range(32)]
+        #print()
+
+        self.draw()
         pygame.display.flip()
+
+    def draw(self):
+        tile_width = Interpreter.SCREEN_WIDTH // Interpreter.CHIP8_WIDTH
+        tile_height = Interpreter.SCREEN_HEIGHT // Interpreter.CHIP8_HEIGHT
+
+        colors = ((0, 0, 0), (255, 255, 255))
+
+        for idx, toggle in enumerate(self.display):
+            x = idx % Interpreter.CHIP8_WIDTH
+            y = idx // Interpreter.CHIP8_HEIGHT
+            pygame.draw.rect(self._screen, colors[self.display[idx]],
+                             (tile_width * x, tile_height * y, tile_width, tile_height))
 
     def get_input(self):
         self.input = [0] * 16
         if pygame.event.get(eventtype=pygame.QUIT):
             pygame.quit()
             exit(0)
-        for i in pygame.event.get(eventtype=pygame.KEYDOWN):
-            if chr(i.key) in self.input_map:
-                self.input[self.input_map[chr(i.key)]] = 1
+        poll = pygame.key.get_pressed()
+        for k, v in self.input_map.items():
+            if poll[self.ascii_pygame_key_map[k]]:
+                self.input[v] = 1
         pygame.event.clear()
 
     def increment_program_counter(self):
@@ -310,11 +345,6 @@ class Interpreter:
         vy = (self.op_code & 0x00F0) >> 4
         height = self.op_code & 0x000F
         width = 8
-
-        tile_width = Interpreter.SCREEN_WIDTH // Interpreter.CHIP8_WIDTH
-        tile_height = Interpreter.SCREEN_HEIGHT // Interpreter.CHIP8_HEIGHT
-        colors = ((0, 0, 0), (255, 255, 255))
-
         self.registers[0xF] = 0
 
         for y in range(height):
@@ -325,9 +355,6 @@ class Interpreter:
                 byte >>= 1
                 if self.display[idx] == 0:
                     self.registers[0xF] = 1
-
-                pygame.draw.rect(self._screen, colors[self.display[idx]],
-                                 (tile_width * x, tile_height * y, tile_width, tile_height))
 
     def OP_Ex9E(self):  # SKP Vx: Skip next instruction if key with the value of Vx is pressed
         vx = (self.op_code & 0x0F00) >> 8
