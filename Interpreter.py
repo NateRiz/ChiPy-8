@@ -10,8 +10,9 @@ class Interpreter:
     FONT_SET_START_ADDRESS = 0x50
     CHIP8_WIDTH = 64
     CHIP8_HEIGHT = 32
-    SCREEN_WIDTH = 960
-    SCREEN_HEIGHT = 480
+    SCALE = 25
+    SCREEN_WIDTH = 64 * SCALE
+    SCREEN_HEIGHT = 32 * SCALE
 
     def __init__(self, rom_path):
         self.registers = [0] * 16
@@ -44,6 +45,7 @@ class Interpreter:
         }
         self.display = [0] * (Interpreter.CHIP8_WIDTH * Interpreter.CHIP8_HEIGHT)
         self._screen = pygame.display.set_mode((Interpreter.SCREEN_WIDTH, Interpreter.SCREEN_HEIGHT))
+        self.clock = pygame.time.Clock()
         pygame.display.set_caption("ChiPy-8 Interpreter")
         self.op_code = 0
 
@@ -148,13 +150,19 @@ class Interpreter:
         self.memory[Interpreter.FONT_SET_START_ADDRESS: Interpreter.FONT_SET_START_ADDRESS + len(font_set)] = font_set
 
     def tick(self):
+        self.clock.tick(30)
+
         self.get_input()
 
         self.op_code = (self.memory[self.program_counter] << 8) | self.memory[self.program_counter + 1]
-
         self.increment_program_counter()
 
         self.op_map[(self.op_code & 0xF000) >> 12]()
+
+        if self.delay_timer > 0:
+            self.delay_timer = 0
+        if self.sound_timer > 0:
+            self.sound_timer = 0
 
         pygame.display.flip()
 
@@ -170,6 +178,9 @@ class Interpreter:
 
     def increment_program_counter(self):
         self.program_counter += 2
+
+    def decrement_program_counter(self):
+        self.program_counter -= 2
 
     def OP_00E0(self):  # CLS: Clear the Display
         self.display = [0] * (64 * 32)
@@ -249,33 +260,33 @@ class Interpreter:
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[0xF] = int(self.registers[vx] > self.registers[vy])
+        self.registers[0xF] = int(self.registers[vx] < self.registers[vy])
         self.registers[vx] -= self.registers[vy]
         if self.registers[vx] < 0:
-            self.registers[vx] += 0xFF
+            self.registers[vx] += 0xFF + 1
 
     def OP_8xy6(self):  # SHR Vx {, Vy}: Set Vx = Vx SHR 1
         vx = (self.op_code & 0x0F00) >> 8
 
-        self.registers[0xF] = self.registers[vx & 1]
+        self.registers[0xF] = self.registers[vx] & 1
         self.registers[vx] >>= 1
 
     def OP_8xy7(self):  # SUBN Vx, Vy: Set Vx = Vy - Vx, set VF = NOT borrow
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[0xF] = int(self.registers[vy] > self.registers[vx])
+        self.registers[0xF] = int(self.registers[vy] < self.registers[vx])
         self.registers[vx] = self.registers[vy] - self.registers[vx]
         if self.registers[vx] < 0:
-            self.registers[vx] += 0xFF
+            self.registers[vx] += 0xFF + 1
 
     def OP_8xyE(self):  # SHL Vx {, Vy}: Set Vx = Vx SHL 1
         vx = (self.op_code & 0x0F00) >> 8
 
-        self.registers[0xF] = self.registers[vx & 0x80]
+        self.registers[0xF] = (self.registers[vx] & 0x80) >> 7
         self.registers[vx] <<= 1
         if self.registers[0xF]:
-            self.registers[vx] -= 0xFF
+            self.registers[vx] -= (0xFF + 1)
 
     def OP_9xy0(self):  # SNE Vx, Vy: Skip next instruction if Vx != Vy
         vx = (self.op_code & 0x0F00) >> 8
@@ -297,24 +308,26 @@ class Interpreter:
     def OP_Dxyn(self):  # DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
-        sprite = self.memory[self.index_register:self.registers[self.op_code & 0x000F]]
-
-        x = self.memory[vx]
-        y = self.memory[vy]
-
-        idx = x + x * y
-        for i in range(len(sprite)):
-            self.display[idx] ^= sprite[i]
-            if not self.display[idx]:
-                self.registers[0xF] = 1
+        height = self.op_code & 0x000F
+        width = 8
 
         tile_width = Interpreter.SCREEN_WIDTH // Interpreter.CHIP8_WIDTH
         tile_height = Interpreter.SCREEN_HEIGHT // Interpreter.CHIP8_HEIGHT
         colors = ((0, 0, 0), (255, 255, 255))
-        for i in range(idx, idx + len(sprite)):
-            pygame.draw.rect(self._screen, colors[self.display[i]],
-                             (tile_width * (i % Interpreter.CHIP8_WIDTH), tile_height * (i // Interpreter.CHIP8_HEIGHT),
-                              tile_width, tile_height))
+
+        self.registers[0xF] = 0
+
+        for y in range(height):
+            byte = self.memory[self.index_register + y]
+            for x in range(width):
+                idx = vx + width - x - 1 + (vy + y) * Interpreter.CHIP8_WIDTH
+                self.display[idx] = byte & 1
+                byte >>= 1
+                if self.display[idx] == 0:
+                    self.registers[0xF] = 1
+
+                pygame.draw.rect(self._screen, colors[self.display[idx]],
+                                 (tile_width * x, tile_height * y, tile_width, tile_height))
 
     def OP_Ex9E(self):  # SKP Vx: Skip next instruction if key with the value of Vx is pressed
         vx = (self.op_code & 0x0F00) >> 8
@@ -336,6 +349,7 @@ class Interpreter:
             if n:
                 self.registers[vx] = idx
                 return
+        self.decrement_program_counter()
 
     def OP_Fx15(self):  # LD DT, Vx: Set delay timer = Vx
         vx = (self.op_code & 0x0F00) >> 8
@@ -352,7 +366,7 @@ class Interpreter:
     def OP_Fx29(self):  # LD F, Vx: Set I = location of sprite for digit Vx
         BYTES_PER_SPRITE = 5
         vx = (self.op_code & 0x0F00) >> 8
-        self.index_register = self.memory[Interpreter.FONT_SET_START_ADDRESS + BYTES_PER_SPRITE * self.registers[vx]]
+        self.index_register = Interpreter.FONT_SET_START_ADDRESS + BYTES_PER_SPRITE * self.registers[vx]
 
     def OP_Fx33(self):  # LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
         vx = (self.op_code & 0x0F00) >> 8

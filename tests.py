@@ -1,6 +1,6 @@
 import os
+import pygame
 import unittest
-from unittest import skip
 from unittest.mock import patch
 from Interpreter import Interpreter
 from tests_utils import *
@@ -11,6 +11,8 @@ class Test(unittest.TestCase):
     def setUp(self):
         patch('pygame.display.set_mode', lambda _: None).start()
         patch('pygame.display.flip', lambda: None).start()
+        patch('pygame.draw.rect', lambda a, b, c: None).start()
+        # Todo Patch Clock.tick()
 
     def test_loads_rom_correctly(self):
         path = os.path.join(os.getcwd(), "test_roms", "rand_512_bytes.ch8")
@@ -122,25 +124,47 @@ class Test(unittest.TestCase):
         interpreter.tick()
         self.assertEqual(interpreter.registers[1], 0b11001)
 
-    @skip('Not implemented')
     def test_OP_8xy4(self):  # ADD Vx, Vy: Set Vx = Vx + Vy, set VF = carry
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "ADD_Vx_Vy.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 255
+        interpreter.registers[2] = 3
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 2)  # Should wrap
+        self.assertEqual(interpreter.registers[0xF], 1)
 
-    @skip('Not implemented')
     def test_OP_8xy5(self):  # SUB Vx, Vy: Set Vx = Vx - Vy, set VF = NOT borrow
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SUB_Vx_Vy.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 3
+        interpreter.registers[2] = 5
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 254)  # Should wrap
+        self.assertEqual(interpreter.registers[0xF], 1)
 
-    @skip('Not implemented')
     def test_OP_8xy6(self):  # SHR Vx {, Vy}: Set Vx = Vx SHR 1
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SHR_VX.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0b101
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0b10)  # Should wrap
+        self.assertEqual(interpreter.registers[0xF], 1)
 
-    @skip('Not implemented')
     def test_OP_8xy7(self):  # SUBN Vx, Vy: Set Vx = Vy - Vx, set VF = NOT borrow
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SHR_VX.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 0b101
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0b10)  # Should wrap
+        self.assertEqual(interpreter.registers[0xF], 1)
 
-    @skip('Not implemented')
     def test_OP_8xyE(self):  # SHL Vx {, Vy}: Set Vx = Vx SHL 1
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SHL_VX.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 129
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 2)  # Should wrap
+        self.assertEqual(interpreter.registers[0xF], 1)
 
     def test_OP_9xy0(self):  # SNE Vx, Vy: Skip next instruction if Vx != Vy
         path = os.path.join(os.getcwd(), "test_roms", "SNE_Vx_Vy.ch8")
@@ -162,22 +186,48 @@ class Test(unittest.TestCase):
         interpreter.tick()
         self.assertEqual(interpreter.program_counter, 0xABC + 0x4)
 
-    @skip('Not implemented')
     def test_OP_Cxkk(self):  # RND Vx, byte: Set Vx = random byte AND kk
-        pass
+        patch('Interpreter.getrandbits', lambda _: 0b10101010).start()
+        path = os.path.join(os.getcwd(), "test_roms", "RND_Vx_byte.ch8")
+        interpreter = Interpreter(path)
+        interpreter.tick()
+        self.assertEqual(interpreter.registers[1], 0b10101010 & 0b1100)
+        patch.stopall()
 
-    @skip('Not implemented')
     def test_OP_Dxyn(
             self):  # DRW Vx, Vy, nibble: Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "DRW_Vx_Vy.ch8")
+        BYTES_PER_DIGIT = 5
+        interpreter = Interpreter(path)
+        interpreter.index_register = 0x50
+        interpreter.tick()
+        guess = []
+        for i in range(BYTES_PER_DIGIT):
+            guess += interpreter.display[i * Interpreter.CHIP8_WIDTH: i * Interpreter.CHIP8_WIDTH + 8]
+        correct = [int(j) for j in "".join([bin(i)[2:] for i in interpreter.memory[0x50: 0x50 + 5]])]
+        self.assertEqual(guess, correct)
 
-    @skip('Not implemented')
     def test_OP_Ex9E(self):  # SKP Vx: Skip next instruction if key with the value of Vx is pressed
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SKP_Vx.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = interpreter.input_map['a']
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0x202)
+        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a)
+        pygame.event.post(event)
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0x206)
 
-    @skip('Not implemented')
     def test_OP_ExA1(self):  # SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "SKNP_Vx.ch8")
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = interpreter.input_map['a']
+        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a)
+        pygame.event.post(event)
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0x202)
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0x206)
 
     def test_OP_Fx07(self):  # LD Vx, DT: Set Vx = delay timer value
         path = os.path.join(os.getcwd(), "test_roms", "Ld_Vx_DT.ch8")
@@ -186,9 +236,17 @@ class Test(unittest.TestCase):
         interpreter.tick()
         self.assertEqual(interpreter.registers[1], 99)
 
-    @skip('Not implemented')
     def test_OP_Fx0A(self):  # LD Vx, K: Wait for a key press, store the value of the key in Vx
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_Vx_k.ch8")
+        interpreter = Interpreter(path)
+        for _ in range(10):
+            interpreter.tick()
+            self.assertEqual(interpreter.program_counter, 0x200)
+        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a)
+        pygame.event.post(event)
+        interpreter.tick()
+        self.assertEqual(interpreter.program_counter, 0x202)
+        self.assertEqual(interpreter.registers[1], interpreter.input_map['a'])
 
     def test_OP_Fx15(self):  # LD DT, Vx: Set delay timer = Vx
         path = os.path.join(os.getcwd(), "test_roms", "LD_DT.ch8")
@@ -210,9 +268,14 @@ class Test(unittest.TestCase):
         interpreter.tick()
         self.assertEqual(interpreter.index_register, 5)
 
-    @skip('Not implemented')
     def test_OP_Fx29(self):  # LD F, Vx: Set I = location of sprite for digit Vx
-        pass
+        path = os.path.join(os.getcwd(), "test_roms", "LD_F_Vx.ch8")
+        BYTES_PER_DIGIT = 5
+        interpreter = Interpreter(path)
+        interpreter.registers[1] = 3
+        interpreter.tick()
+        self.assertEqual(interpreter.index_register,
+                         interpreter.FONT_SET_START_ADDRESS + (interpreter.registers[1] * BYTES_PER_DIGIT))
 
     def test_OP_Fx33(self):  # LD B, Vx: Store BCD representation of Vx in memory locations I, I+1, and I+2
         path = os.path.join(os.getcwd(), "test_roms", "LD_B_Vx.ch8")
@@ -222,14 +285,13 @@ class Test(unittest.TestCase):
         interpreter.tick()
         self.assertEqual(interpreter.memory[0x300:0x303], [1, 2, 3])
 
-
     def test_OP_Fx55(self):  # LD [I], Vx: Store registers V0 through Vx in memory starting at location I
         path = os.path.join(os.getcwd(), "test_roms", "LD_I_Vx.ch8")
         interpreter = Interpreter(path)
         interpreter.registers[:0xC] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
         interpreter.index_register = interpreter.MEMORY_START_ADDRESS + 0x100
         interpreter.tick()
-        start = interpreter.MEMORY_START_ADDRESS+0x100
+        start = interpreter.MEMORY_START_ADDRESS + 0x100
         end = start + 0xC
         self.assertEqual(interpreter.registers[:0xC], interpreter.memory[start:end])
 

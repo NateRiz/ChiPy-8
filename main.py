@@ -9,6 +9,7 @@ def main():
     interpreter = Interpreter(path)
     while True:
         interpreter.tick()
+    print("Exiting..")
 
 
 if __name__ == '__main__':
