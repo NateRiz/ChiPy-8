@@ -171,8 +171,9 @@ class Interpreter:
         self.clock.tick(30)
 
         self.get_input()
-        print(self.input)
+
         self.op_code = (self.memory[self.program_counter] << 8) | self.memory[self.program_counter + 1]
+
         self.increment_program_counter()
 
         self.op_map[(self.op_code & 0xF000) >> 12]()
@@ -182,13 +183,12 @@ class Interpreter:
         if self.sound_timer > 0:
             self.sound_timer = 0
 
-        #[print(self.display[i*64:(i+1)*64]) for i in range(32)]
-        #print()
 
         self.draw()
         pygame.display.flip()
 
     def draw(self):
+
         tile_width = Interpreter.SCREEN_WIDTH // Interpreter.CHIP8_WIDTH
         tile_height = Interpreter.SCREEN_HEIGHT // Interpreter.CHIP8_HEIGHT
 
@@ -196,7 +196,7 @@ class Interpreter:
 
         for idx, toggle in enumerate(self.display):
             x = idx % Interpreter.CHIP8_WIDTH
-            y = idx // Interpreter.CHIP8_HEIGHT
+            y = idx // Interpreter.CHIP8_WIDTH
             pygame.draw.rect(self._screen, colors[self.display[idx]],
                              (tile_width * x, tile_height * y, tile_width, tile_height))
 
@@ -269,19 +269,19 @@ class Interpreter:
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[vx] = self.registers[vx] | self.registers[vy]
+        self.registers[vx] |= self.registers[vy]
 
     def OP_8xy2(self):  # AND Vx, Vy: Set Vx = Vx AND Vy
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[vx] = self.registers[vx] & self.registers[vy]
+        self.registers[vx] &= self.registers[vy]
 
     def OP_8xy3(self):  # XOR Vx, Vy: Set Vx = Vx XOR Vy
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[vx] = self.registers[vx] ^ self.registers[vy]
+        self.registers[vx] ^= self.registers[vy]
 
     def OP_8xy4(self):  # ADD Vx, Vy: Set Vx = Vx + Vy, set VF = carry
         vx = (self.op_code & 0x0F00) >> 8
@@ -350,7 +350,7 @@ class Interpreter:
         for y in range(height):
             byte = self.memory[self.index_register + y]
             for x in range(width):
-                idx = vx + width - x - 1 + (vy + y) * Interpreter.CHIP8_WIDTH
+                idx = self.registers[vx] + width - x - 1 + (self.registers[vy] + y) * Interpreter.CHIP8_WIDTH
                 self.display[idx] = byte & 1
                 byte >>= 1
                 if self.display[idx] == 0:

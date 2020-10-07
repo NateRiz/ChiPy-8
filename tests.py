@@ -6,12 +6,14 @@ from Interpreter import Interpreter
 from tests_utils import *
 
 
+
 class Test(unittest.TestCase):
 
     def setUp(self):
         patch('pygame.display.set_mode', lambda _: None).start()
         patch('pygame.display.flip', lambda: None).start()
         patch('pygame.draw.rect', lambda a, b, c: None).start()
+        self.FAKE_KEYSTROKES = [0] * 97 + [1] + [0] * 300
         # Todo Patch Clock.tick()
 
     def test_loads_rom_correctly(self):
@@ -27,6 +29,7 @@ class Test(unittest.TestCase):
         for idx, i in enumerate(
                 interpreter.memory[Interpreter.MEMORY_START_ADDRESS: Interpreter.MEMORY_START_ADDRESS + num_bytes]):
             self.assertEqual(hex_dump[idx], i, F"Wrong value at idx:{idx}. Got {i}, expected {hex_dump[idx]}")
+
 
     def test_OP_00E0(self):  # CLS: Clear the Display
         path = os.path.join(os.getcwd(), "test_roms", "clear_display.ch8")
@@ -213,18 +216,16 @@ class Test(unittest.TestCase):
         interpreter.registers[1] = interpreter.input_map['a']
         interpreter.tick()
         self.assertEqual(interpreter.program_counter, 0x202)
-        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a)
-        pygame.event.post(event)
-        interpreter.tick()
+        with patch('pygame.key.get_pressed', lambda : self.FAKE_KEYSTROKES):
+            interpreter.tick()
         self.assertEqual(interpreter.program_counter, 0x206)
 
     def test_OP_ExA1(self):  # SKNP Vx: Skip next instruction if key with the value of Vx is not pressed
         path = os.path.join(os.getcwd(), "test_roms", "SKNP_Vx.ch8")
         interpreter = Interpreter(path)
         interpreter.registers[1] = interpreter.input_map['a']
-        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a)
-        pygame.event.post(event)
-        interpreter.tick()
+        with patch('pygame.key.get_pressed', lambda : self.FAKE_KEYSTROKES):
+            interpreter.tick()
         self.assertEqual(interpreter.program_counter, 0x202)
         interpreter.tick()
         self.assertEqual(interpreter.program_counter, 0x206)
@@ -242,9 +243,8 @@ class Test(unittest.TestCase):
         for _ in range(10):
             interpreter.tick()
             self.assertEqual(interpreter.program_counter, 0x200)
-        event = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_a)
-        pygame.event.post(event)
-        interpreter.tick()
+        with patch('pygame.key.get_pressed', lambda: self.FAKE_KEYSTROKES):
+            interpreter.tick()
         self.assertEqual(interpreter.program_counter, 0x202)
         self.assertEqual(interpreter.registers[1], interpreter.input_map['a'])
 
@@ -302,7 +302,6 @@ class Test(unittest.TestCase):
         interpreter.tick()
         correct = [0xFC, 0x65, 0x01, 0x23, 0x45, 0x67, 0x89, 0x10, 0x11, 0x12, 0x13, 0x14, 0x0, 0x0, 0x0, 0x0]
         self.assertEqual(interpreter.registers, correct)
-
 
 if __name__ == '__main__':
     unittest.main()
