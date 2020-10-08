@@ -11,10 +11,13 @@ class Interpreter:
     CHIP8_WIDTH = 64
     CHIP8_HEIGHT = 32
     SCALE = 25
+    DEBUG_WINDOW_SIZE = 400
     SCREEN_WIDTH = 64 * SCALE
     SCREEN_HEIGHT = 32 * SCALE
+    BACKGROUND_COLOR = (97, 134, 169)
+    FOREGROUND_COLOR = (33, 41, 70)
 
-    def __init__(self, rom_path):
+    def __init__(self, rom_path, debug_mode):
         self.registers = [0] * 16
         self.memory = [0x00] * 4096
         self.load_rom(rom_path)
@@ -62,7 +65,8 @@ class Interpreter:
             "v": pygame.K_v,
         }
         self.display = [0] * (Interpreter.CHIP8_WIDTH * Interpreter.CHIP8_HEIGHT)
-        self._screen = pygame.display.set_mode((Interpreter.SCREEN_WIDTH, Interpreter.SCREEN_HEIGHT))
+        self._screen = pygame.display.set_mode((Interpreter.SCREEN_WIDTH + Interpreter.DEBUG_WINDOW_SIZE * debug_mode,
+                                                Interpreter.SCREEN_HEIGHT))
         self.clock = pygame.time.Clock()
         pygame.display.set_caption("ChiPy-8 Interpreter")
         self.op_code = 0
@@ -168,7 +172,7 @@ class Interpreter:
         self.memory[Interpreter.FONT_SET_START_ADDRESS: Interpreter.FONT_SET_START_ADDRESS + len(font_set)] = font_set
 
     def tick(self):
-        self.clock.tick(30)
+        self.clock.tick(6000)
 
         self.get_input()
 
@@ -183,16 +187,11 @@ class Interpreter:
         if self.sound_timer > 0:
             self.sound_timer = 0
 
-
-        self.draw()
-        pygame.display.flip()
-
     def draw(self):
-
         tile_width = Interpreter.SCREEN_WIDTH // Interpreter.CHIP8_WIDTH
         tile_height = Interpreter.SCREEN_HEIGHT // Interpreter.CHIP8_HEIGHT
 
-        colors = ((0, 0, 0), (255, 255, 255))
+        colors = (Interpreter.BACKGROUND_COLOR, Interpreter.FOREGROUND_COLOR)
 
         for idx, toggle in enumerate(self.display):
             x = idx % Interpreter.CHIP8_WIDTH
@@ -257,7 +256,7 @@ class Interpreter:
     def OP_7xkk(self):  # ADD Vx, byte: Set Vx = Vx + kk
         vx = (self.op_code & 0x0F00) >> 8
 
-        self.registers[vx] += self.op_code & 0x00FF
+        self.registers[vx] = (self.registers[vx] + self.op_code & 0x00FF) % 0xFF
 
     def OP_8xy0(self):  # LD Vx, Vy: Set Vx = Vy
         vx = (self.op_code & 0x0F00) >> 8
@@ -295,7 +294,7 @@ class Interpreter:
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[0xF] = int(self.registers[vx] < self.registers[vy])
+        self.registers[0xF] = int(self.registers[vx] > self.registers[vy])
         self.registers[vx] -= self.registers[vy]
         if self.registers[vx] < 0:
             self.registers[vx] += 0xFF + 1
@@ -310,7 +309,7 @@ class Interpreter:
         vx = (self.op_code & 0x0F00) >> 8
         vy = (self.op_code & 0x00F0) >> 4
 
-        self.registers[0xF] = int(self.registers[vy] < self.registers[vx])
+        self.registers[0xF] = int(self.registers[vy] > self.registers[vx])
         self.registers[vx] = self.registers[vy] - self.registers[vx]
         if self.registers[vx] < 0:
             self.registers[vx] += 0xFF + 1
@@ -351,10 +350,17 @@ class Interpreter:
             byte = self.memory[self.index_register + y]
             for x in range(width):
                 idx = self.registers[vx] + width - x - 1 + (self.registers[vy] + y) * Interpreter.CHIP8_WIDTH
-                self.display[idx] = byte & 1
+                self.display[idx] ^= byte & 1
                 byte >>= 1
                 if self.display[idx] == 0:
                     self.registers[0xF] = 1
+
+        update_rect = pygame.rect.Rect(0, 0, Interpreter.SCREEN_WIDTH, Interpreter.SCREEN_HEIGHT)
+        pygame.draw.rect(self._screen, Interpreter.BACKGROUND_COLOR, update_rect)
+        self.draw()
+        pygame.display.update(update_rect)
+
+
 
     def OP_Ex9E(self):  # SKP Vx: Skip next instruction if key with the value of Vx is pressed
         vx = (self.op_code & 0x0F00) >> 8
@@ -406,10 +412,10 @@ class Interpreter:
 
     def OP_Fx55(self):  # LD [I], Vx: Store registers V0 through Vx in memory starting at location I
         vx = (self.op_code & 0x0F00) >> 8
-        for i in range(vx):
+        for i in range(vx+1):
             self.memory[self.index_register + i] = self.registers[i]
 
     def OP_Fx65(self):  # LD Vx, [I]: Read registers V0 through Vx from memory starting at location I
         vx = (self.op_code & 0x0F00) >> 8
-        for i in range(vx):
+        for i in range(vx+1):
             self.registers[i] = self.memory[self.index_register + i]
