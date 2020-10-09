@@ -172,7 +172,7 @@ class Interpreter:
         self.memory[Interpreter.FONT_SET_START_ADDRESS: Interpreter.FONT_SET_START_ADDRESS + len(font_set)] = font_set
 
     def tick(self):
-        self.clock.tick(6000)
+        self.clock.tick(600)
 
         self.get_input()
 
@@ -350,8 +350,10 @@ class Interpreter:
             byte = self.memory[self.index_register + y]
             for x in range(width):
                 idx = self.registers[vx] + width - x - 1 + (self.registers[vy] + y) * Interpreter.CHIP8_WIDTH
-                self.display[idx] ^= byte & 1
                 byte >>= 1
+                if idx >= len(self.display):
+                    return # Temp fix since wrapping isnt implemented
+                self.display[idx] ^= byte & 1
                 if self.display[idx] == 0:
                     self.registers[0xF] = 1
 
