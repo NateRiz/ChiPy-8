@@ -19,11 +19,15 @@ Index:
 ## Example ROMs
 
 #### Connect 4
+![Connect 4](https://github.com/NateRiz/ChiPy-8/blob/master/Examples/connect4.png)
 
 #### Space Invaders
+![Space Invaders](https://github.com/NateRiz/ChiPy-8/blob/master/Examples/space_invaders.png)
 
 ## Debugger
 This interpreter can use a debugger by passing in a command line argument with pause, step, and play
+
+![Debugger](https://github.com/NateRiz/ChiPy-8/blob/master/Examples/ChiPy8.gif)
 
 ## Usage
 ```Python
