@@ -349,13 +349,26 @@ class Interpreter:
         for y in range(height):
             byte = self.memory[self.index_register + y]
             for x in range(width):
-                idx = self.registers[vx] + width - x - 1 + (self.registers[vy] + y) * Interpreter.CHIP8_WIDTH
-                byte >>= 1
-                if idx >= len(self.display):
-                    return # Temp fix since wrapping isnt implemented
-                self.display[idx] ^= byte & 1
-                if self.display[idx] == 0:
+
+                idx = byte & (0x80 >> x)
+                if not idx:
+                    continue
+
+                row = ((self.registers[vy]+y) % Interpreter.CHIP8_HEIGHT) * Interpreter.CHIP8_WIDTH
+                col = ((self.registers[vx] + x) % Interpreter.CHIP8_WIDTH)
+
+                idx = row + col
+
+                if self.display[idx]:
                     self.registers[0xF] = 1
+                self.display[idx] ^= 1
+
+                """
+                for i in range(32):
+                    [print(self.display[j + i * 64], end="", sep="") for j in range(64)]
+                    print()
+                print("\n")
+                """
 
         update_rect = pygame.rect.Rect(0, 0, Interpreter.SCREEN_WIDTH, Interpreter.SCREEN_HEIGHT)
         pygame.draw.rect(self._screen, Interpreter.BACKGROUND_COLOR, update_rect)

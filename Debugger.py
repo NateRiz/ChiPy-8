@@ -3,10 +3,12 @@ import pygame
 from enum import Enum
 from time import sleep
 
+
 class STATE(Enum):
     PLAY = 0
     STEP = 1
     PAUSE = 2
+
 
 class Debugger:
     def __init__(self, interpreter: Interpreter):
@@ -20,7 +22,7 @@ class Debugger:
         self.font_size = 18
         self.font = pygame.font.SysFont("monospace", self.font_size)
 
-        self.state = STATE.PLAY
+        self.state = STATE.PAUSE
         self.pause = None
         self.step = None
         self.play = None
@@ -44,10 +46,10 @@ class Debugger:
         y = self.y + buffer
         self.pause = pygame.rect.Rect(x, y, button_size, button_size)
 
-        x+=buffer+button_size
+        x += buffer + button_size
         self.step = pygame.rect.Rect(x, y, button_size, button_size)
 
-        x+=buffer+button_size
+        x += buffer + button_size
         self.play = pygame.rect.Rect(x, y, button_size, button_size)
 
         self.text_y_start = y + button_size + buffer
@@ -63,31 +65,40 @@ class Debugger:
             elif self.play.collidepoint(pos):
                 self.state = STATE.PLAY
 
-
-
     def draw(self):
         WHITE = (255, 255, 255)
         BLACK = (0, 0, 0)
         GREEN = (60, 255, 60)
         RED = (255, 90, 90)
+        YELLOW = (255, 255, 60)
         buffer = 8
         formatted = self.get_formatted()
 
-        #fill console black
+        # fill console black
         rect = pygame.draw.rect(self.screen, BLACK, (self.x, self.y, self.width, self.height))
 
-        #Draw buttons
-        pygame.draw.rect(self.screen, WHITE, self.pause, 1)
-        pygame.draw.rect(self.screen, RED, (self.pause.centerx - 5, self.pause.y + 5, 2, self.pause.height-10), 3)
-        pygame.draw.rect(self.screen, RED, (self.pause.centerx + 3, self.pause.y + 5, 2, self.pause.height-10), 3)
+        # Draw buttons
+        colors = (WHITE, YELLOW)
+        color = WHITE
+        if self.pause.collidepoint(pygame.mouse.get_pos()):
+            color = YELLOW
+        pygame.draw.rect(self.screen, color, self.pause, 1)
+        pygame.draw.rect(self.screen, RED, (self.pause.centerx - 5, self.pause.y + 5, 2, self.pause.height - 10), 3)
+        pygame.draw.rect(self.screen, RED, (self.pause.centerx + 3, self.pause.y + 5, 2, self.pause.height - 10), 3)
 
-        pygame.draw.rect(self.screen, WHITE, self.step, 1)
+        color = WHITE
+        if self.step.collidepoint(pygame.mouse.get_pos()):
+            color = YELLOW
+        pygame.draw.rect(self.screen, color, self.step, 1)
         gt = self.font.render(">", True, RED)
-        self.screen.blit(gt, (self.step.centerx-gt.get_size()[0]//2, self.step.centery-gt.get_size()[1]//2))
+        self.screen.blit(gt, (self.step.centerx - gt.get_size()[0] // 2, self.step.centery - gt.get_size()[1] // 2))
 
-        pygame.draw.rect(self.screen, WHITE, self.play, 1)
+        color = WHITE
+        if self.play.collidepoint(pygame.mouse.get_pos()):
+            color = YELLOW
+        pygame.draw.rect(self.screen, color, self.play, 1)
         gt = self.font.render(">", True, GREEN)
-        self.screen.blit(gt, (self.play.centerx-gt.get_size()[0]//2, self.play.centery-gt.get_size()[1]//2))
+        self.screen.blit(gt, (self.play.centerx - gt.get_size()[0] // 2, self.play.centery - gt.get_size()[1] // 2))
 
         current_y = self.text_y_start
 
@@ -102,7 +113,7 @@ class Debugger:
 
         for i, line in enumerate(reversed(self.interpreter.stack)):
             color = WHITE
-            if self.interpreter.stack_pointer == 0xF-i:
+            if self.interpreter.stack_pointer == 0xF - i:
                 color = GREEN
             img = self.font.render(F"{hex(0xF - i)[2:]}. |{hex(line)}|", True, color)
             self.screen.blit(img, (self.x + buffer, self.y + current_y))
@@ -116,7 +127,7 @@ class Debugger:
 
     def get_formatted(self):
         i = self.interpreter
-        reg = [f'0x{hex(j)[2:].ljust(2, "0")}' for j in i.registers]
+        reg = [f'0x{hex(j)[2:].rjust(2, "0")}' for j in i.registers]
         op_code = (i.memory[i.program_counter] << 8) | i.memory[i.program_counter + 1]
         op_name = op_map[(op_code & 0xF000) >> 12](op_code)
 
@@ -221,9 +232,16 @@ _op_mapF = {
 
 
 def __op_map0(n): return _op_map0[n & 0x000F]
+
+
 def __op_map8(n): return _op_map8[n & 0x000F]
+
+
 def __op_mapE(n): return _op_mapE[n & 0x000F]
+
+
 def __op_mapF(n): return _op_mapF[n & 0x00FF]
+
 
 op_map = {
     0x0: lambda n: __op_map0(n),
@@ -243,4 +261,3 @@ op_map = {
     0xE: lambda n: __op_mapE(n),
     0xF: lambda n: __op_mapF(n),
 }
-
